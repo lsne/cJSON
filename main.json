@@ -1,0 +1,31 @@
+{
+    "employees": [
+      {
+        "id": 1,
+        "name": "John Doe",
+        "age": 30,
+        "position": "Software Engineer",
+        "skills": ["JavaScript", "Python", "Java"]
+      },
+      {
+        "id": 2,
+        "name": "Jane Smith",
+        "age": 25,
+        "position": "Data Analyst",
+        "skills": ["Excel", "SQL", "R"]
+      },
+      {
+        "id": 3,
+        "name": "Emily Johnson",
+        "age": 35,
+        "position": "Product Manager",
+        "skills": ["Leadership", "Communication", "Agile"]
+      }
+    ],
+    "company": {
+      "name": "Tech Solutions",
+      "location": "New York",
+      "founded": 2010
+    },
+    "active": true
+  }
