@@ -52,6 +52,13 @@ int main() {
         free(formatted_json);
     }
 
+    // 格式化输出 JSON
+    formatted_json = cJSON_PrintBuffered(json, 1000, 0);
+    if (formatted_json) {
+        printf("Formatted JSON:\n%s\n", formatted_json);
+        free(formatted_json);
+    }
+
     // 清理
     cJSON_Delete(json);
     free(json_string);

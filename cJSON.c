@@ -126,7 +126,7 @@ static const char *parse_number(cJSON *item,const char *num)
 // pow2gt(19999)  返回值: 32768
 static int pow2gt (int x)	{	--x;	x|=x>>1;	x|=x>>2;	x|=x>>4;	x|=x>>8;	x|=x>>16;	return x+1;	}
 
-typedef struct {char *buffer; int length; int offset; } printbuffer;
+typedef struct {char *buffer; int length; int offset; } printbuffer;   // 输出缓存信息: 输出缓存地址, 长度, 偏移量
 
 static char* ensure(printbuffer *p,int needed)
 {
@@ -367,7 +367,7 @@ cJSON *cJSON_Parse(const char *value) {return cJSON_ParseWithOpts(value,0,0);}
 char *cJSON_Print(cJSON *item)				{return print_value(item,0,1,0);}
 char *cJSON_PrintUnformatted(cJSON *item)	{return print_value(item,0,0,0);}
 
-char *cJSON_PrintBuffered(cJSON *item,int prebuffer,int fmt)
+char *cJSON_PrintBuffered(cJSON *item,int prebuffer,int fmt)    // 预先分配输出文本的 buffer 缓存大小
 {
 	printbuffer p;
 	p.buffer=(char*)cJSON_malloc(prebuffer);
@@ -398,7 +398,7 @@ static char *print_value(cJSON *item,int depth,int fmt,printbuffer *p)
 {
 	char *out=0;
 	if (!item) return 0;
-	if (p)
+	if (p)  // 如果输出缓存(p)不为0, 则表示当前已经不是根元素了, 当前要输出的内容需要加到整个输出缓存(p)的结尾
 	{
 		switch ((item->type)&255)
 		{
@@ -411,7 +411,7 @@ static char *print_value(cJSON *item,int depth,int fmt,printbuffer *p)
 			case cJSON_Object:	out=print_object(item,depth,fmt,p);break;
 		}
 	}
-	else
+	else    // 如果输出缓存(p)为0, 则表示当前是根元素
 	{
 		switch ((item->type)&255)
 		{
@@ -421,7 +421,7 @@ static char *print_value(cJSON *item,int depth,int fmt,printbuffer *p)
 			case cJSON_Number:	out=print_number(item,0);break;
 			case cJSON_String:	out=print_string(item,0);break;
 			case cJSON_Array:	out=print_array(item,depth,fmt,0);break;
-			case cJSON_Object:	out=print_object(item,depth,fmt,0);break;
+			case cJSON_Object:	out=print_object(item,depth,fmt,0);break;   // 一般情况, 根元素解析会进入到这里
 		}
 	}
 	return out;
@@ -582,12 +582,12 @@ static char *print_object(cJSON *item,int depth,int fmt,printbuffer *p)
 	/* Count the number of entries. */
 	while (child) numentries++,child=child->next;
 	/* Explicitly handle empty object case */
-	if (!numentries)
+	if (!numentries)  // 如果 numentries 为0, 则表示是一个空对象
 	{
 		if (p) out=ensure(p,fmt?depth+4:3);
-		else	out=(char*)cJSON_malloc(fmt?depth+4:3);
+		else	out=(char*)cJSON_malloc(fmt?depth+4:3);					// depth 为缩进字符数量
 		if (!out)	return 0;
-		ptr=out;*ptr++='{';
+		ptr=out;*ptr++='{';												// 按对象深度, 将内存分配好, 并添加格式化的 '{', '\n','\t','}' 等字符 
 		if (fmt) {*ptr++='\n';for (i=0;i<depth-1;i++) *ptr++='\t';}
 		*ptr++='}';*ptr++=0;
 		return out;
@@ -630,10 +630,10 @@ static char *print_object(cJSON *item,int depth,int fmt,printbuffer *p)
 		*ptr++='}';*ptr=0;
 		out=(p->buffer)+i;
 	}
-	else
+	else    // 根元素, p 的值还是0, 所以会走到这里
 	{
 		/* Allocate space for the names and the objects */
-		entries=(char**)cJSON_malloc(numentries*sizeof(char*));
+		entries=(char**)cJSON_malloc(numentries*sizeof(char*));  // 分配一个 char指针类型的数组, 并将数组地址返回给 entries
 		if (!entries) return 0;
 		names=(char**)cJSON_malloc(numentries*sizeof(char*));
 		if (!names) {cJSON_free(entries);return 0;}

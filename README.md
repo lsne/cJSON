@@ -2,7 +2,7 @@
 
 ## 使用的代码版本
 
-> 由于 github 上的项目 `https://github.com/DaveGamble/cJSON` 代码量太大了。  
+> 由于 github 上的项目 `https://github.com/DaveGamble/cJSON` 代码量太大了, 不想看。  
 > 所以选择使用在 `https://sourceforge.net/projects/cjson/` 找到的比较老的代码行数少的版本。  
 
 ## 原始文件
@@ -15,4 +15,5 @@
 
 ## 解读注释
 
-> 只对 `cJSON_Parse()` 函数的调用流程进行了解读注释  
+> 只对 `cJSON_Parse()` 函数的调用流程进行了解读注释
+> 对 `cJSON_Print()` 函数的调用流程只简单的注释了其中的几行代码  
