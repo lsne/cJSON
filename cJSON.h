@@ -20,13 +20,13 @@
   THE SOFTWARE.
 */
 
-#ifndef cJSON__h
-#define cJSON__h
+#ifndef cJSON__h    // 如果宏 cJSON__h 未定义, 则继续执行以下代码
+#define cJSON__h    // 定义宏 cJSON__h
 
-#ifdef __cplusplus
-extern "C"
+#ifdef __cplusplus  // 如果宏 __cplusplus 已经被定义了, 说明当前执行环境是 c++ 环境, 
+extern "C"          // 告诉 C++ 编译器按照 C 语言的方式来处理函数名的链接  
 {
-#endif
+#endif              //  #ifdef __cplusplus 的结束语句, 即，如果是 c++ 编译环境, 则添加  extern "C"   和  {  这两行代码
 
 /* cJSON Types: */
 #define cJSON_False 0
@@ -42,16 +42,16 @@ extern "C"
 
 /* The cJSON structure: */
 typedef struct cJSON {
-	struct cJSON *next,*prev;	/* next/prev allow you to walk array/object chains. Alternatively, use GetArraySize/GetArrayItem/GetObjectItem */
-	struct cJSON *child;		/* An array or object item will have a child pointer pointing to a chain of the items in the array/object. */
+	struct cJSON *next,*prev;	/* next/prev allow you to walk array/object chains. Alternatively, use GetArraySize/GetArrayItem/GetObjectItem */  // 上一个元素, 下一个元素的指针
+	struct cJSON *child;		/* An array or object item will have a child pointer pointing to a chain of the items in the array/object. */  // 如果这个 key 是数组和对象类型的, 则这里存放数组或对象的指针
 
-	int type;					/* The type of the item, as above. */
+	int type;					/* The type of the item, as above. */                           // 这个 key 的值类型
 
-	char *valuestring;			/* The item's string, if type==cJSON_String */
-	int valueint;				/* The item's number, if type==cJSON_Number */
-	double valuedouble;			/* The item's number, if type==cJSON_Number */
+	char *valuestring;			/* The item's string, if type==cJSON_String */            // 如果这个 key 是字符串类型的, 则这里存放字符串类型的值
+	int valueint;				/* The item's number, if type==cJSON_Number */                // 如果这个 key 是 int 类型的, 则这里存放 int 类型的值
+	double valuedouble;			/* The item's number, if type==cJSON_Number */            // 如果这个 key 是 double 类型的, 则这里存放 double 类型的值
 
-	char *string;				/* The item's name string, if this item is the child of, or is in the list of subitems of an object. */
+	char *string;				/* The item's name string, if this item is the child of, or is in the list of subitems of an object. */  // key 名
 } cJSON;
 
 typedef struct cJSON_Hooks {
@@ -144,6 +144,6 @@ extern void cJSON_Minify(char *json);
 
 #ifdef __cplusplus
 }
-#endif
+#endif                // 如果是 c++ 编译环境, 则添加一个 } ,  和上面的 extern "C" { 呼应
 
 #endif

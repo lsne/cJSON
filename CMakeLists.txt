@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 # 项目名称
-project(mytest001)
+project(my_test_cJSON)
 
 # 设置 C++ 标准
 set(CMAKE_C_STANDARD 11)
@@ -19,7 +19,7 @@ add_library(main main.c)
 
 # 设置变量
 set(LIBRARIES cJSON main)
-set(OBJECT mytest001)
+set(OBJECT my_test_cJSON)
 
 # 生成可执行文件
 # add_executable(main test7.main.cpp)

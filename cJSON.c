@@ -69,26 +69,28 @@ void cJSON_InitHooks(cJSON_Hooks* hooks)
 	cJSON_free	 = (hooks->free_fn)?hooks->free_fn:free;
 }
 
+// 创建一个json元素, 分配内存, 并初始化值为0
 /* Internal constructor. */
 static cJSON *cJSON_New_Item(void)
 {
-	cJSON* node = (cJSON*)cJSON_malloc(sizeof(cJSON));
-	if (node) memset(node,0,sizeof(cJSON));
+	cJSON* node = (cJSON*)cJSON_malloc(sizeof(cJSON)); // 分配内存地址
+	if (node) memset(node,0,sizeof(cJSON));    // 将分配的内存地址用0值填充, 即设置默认值, 避免出现随机值
 	return node;
 }
 
 /* Delete a cJSON structure. */
+// 删除 c 变量, 释放内存
 void cJSON_Delete(cJSON *c)
 {
-	cJSON *next;
+	cJSON *next;    // 定义一个 cJSON 类型的指针变量 next
 	while (c)
 	{
-		next=c->next;
-		if (!(c->type&cJSON_IsReference) && c->child) cJSON_Delete(c->child);
-		if (!(c->type&cJSON_IsReference) && c->valuestring) cJSON_free(c->valuestring);
-		if (!(c->type&cJSON_StringIsConst) && c->string) cJSON_free(c->string);
-		cJSON_free(c);
-		c=next;
+		next=c->next;   // next 指向 c 变量的下一跳链表指针, 即下一下元素地址
+		if (!(c->type&cJSON_IsReference) && c->child) cJSON_Delete(c->child);   // 如果当前元素类型不是是一个引用类型, 并且有子元素, 则递归删除该元素指向的子元素的指针链表
+		if (!(c->type&cJSON_IsReference) && c->valuestring) cJSON_free(c->valuestring);  // 如果当前元素类型不是是一个引用类型, 并且值不为空, 则释放当前变量的内存
+		if (!(c->type&cJSON_StringIsConst) && c->string) cJSON_free(c->string);  // 如果是个常量字符串, 则释放内存
+		cJSON_free(c);   // 释放当前元素 c 的内存
+		c=next;          // 将c指向下一个元素
 	}
 }
 
@@ -97,16 +99,16 @@ static const char *parse_number(cJSON *item,const char *num)
 {
 	double n=0,sign=1,scale=0;int subscale=0,signsubscale=1;
 
-	if (*num=='-') sign=-1,num++;	/* Has sign? */
-	if (*num=='0') num++;			/* is zero */
-	if (*num>='1' && *num<='9')	do	n=(n*10.0)+(*num++ -'0');	while (*num>='0' && *num<='9');	/* Number? */
-	if (*num=='.' && num[1]>='0' && num[1]<='9') {num++;		do	n=(n*10.0)+(*num++ -'0'),scale--; while (*num>='0' && *num<='9');}	/* Fractional part? */
-	if (*num=='e' || *num=='E')		/* Exponent? */
+	if (*num=='-') sign=-1,num++;	/* Has sign? */ // 如果是 - 开头, 则设置符号标志 sign 为 -1, 并且 num++ 获取下一个字符
+	if (*num=='0') num++;			/* is zero */   // 如果第一个数字是 0, 则直接移动指针到下一位, 如果是整数,高位的0没有任何意义; 如果是小数, 下一位判断是否为(.)进行后续处理
+	if (*num>='1' && *num<='9')	do	n=(n*10.0)+(*num++ -'0');	while (*num>='0' && *num<='9');	/* Number? */  // 如果第一个数字是 1-9, 则循环读取每一位, 添加到变量 n 中, 每次 n 都需首先 *10 以进位, 再和当前位上的数字相加
+	if (*num=='.' && num[1]>='0' && num[1]<='9') {num++;		do	n=(n*10.0)+(*num++ -'0'),scale--; while (*num>='0' && *num<='9');}	/* Fractional part? */  // 如果是小数点(.) 并且小数点后一位>=0, 则处理小数部分
+	if (*num=='e' || *num=='E')		/* Exponent? */                                         // 如果是 科学记数法, 则处理E后面的数字逻辑
 	{	num++;if (*num=='+') num++;	else if (*num=='-') signsubscale=-1,num++;		/* With sign? */
 		while (*num>='0' && *num<='9') subscale=(subscale*10)+(*num++ - '0');	/* Number? */
 	}
 
-	n=sign*n*pow(10.0,(scale+subscale*signsubscale));	/* number = +/- number.fraction * 10^+/- exponent */
+	n=sign*n*pow(10.0,(scale+subscale*signsubscale));	/* number = +/- number.fraction * 10^+/- exponent */   // 转为正常的10进制数值
 	
 	item->valuedouble=n;
 	item->valueint=(int)n;
@@ -114,6 +116,14 @@ static const char *parse_number(cJSON *item,const char *num)
 	return num;
 }
 
+
+// 获取到的是大于等于 x 的最小的2的幂数
+// pow2gt(5)  	返回值: 8
+// pow2gt(50)  	返回值: 64
+// pow2gt(64)  	返回值: 64
+// pow2gt(100)  返回值: 128
+// pow2gt(134)  返回值: 256
+// pow2gt(19999)  返回值: 32768
 static int pow2gt (int x)	{	--x;	x|=x>>1;	x|=x>>2;	x|=x>>4;	x|=x>>8;	x|=x>>16;	return x+1;	}
 
 typedef struct {char *buffer; int length; int offset; } printbuffer;
@@ -188,24 +198,34 @@ static unsigned parse_hex4(const char *str)
 }
 
 /* Parse the input text into an unescaped cstring, and populate item. */
+// firstByteMark 数组中的7个元素表示 UTF-8 编码中每种字节序列的第一个字节的特定前缀
+// 0x00 表示的是一个ASCII字符
+// 0xC0 表示与后面一个字节一起, 2个字节合并表示为一个 UTF-8 编码值
+// 0xE0 表示与后面二个字节一起, 3个字节合并表示为一个 UTF-8 编码值
+// 0xF0 表示与后面三个字节一起, 4个字节合并表示为一个 UTF-8 编码值
+// 0xF8 表示与后面四个字节一起, 5个字节合并表示为一个 UTF-8 编码值
+// 0xFC 表示与后面五个字节一起, 6个字节合并表示为一个 UTF-8 编码值
 static const unsigned char firstByteMark[7] = { 0x00, 0x00, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC };
 static const char *parse_string(cJSON *item,const char *str)
 {
 	const char *ptr=str+1;char *ptr2;char *out;int len=0;unsigned uc,uc2;
-	if (*str!='\"') {ep=str;return 0;}	/* not a string! */
+	if (*str!='\"') {ep=str;return 0;}	/* not a string! */   //如果字符串不是以双引号 `"` 开头, 则表示变量 str 表示的值不是一个字符串, 返回0
 	
+	// ptr = str+1; 从 str 的第二个字符开始变量每一个字符
+	// 循环条件: ptr 不是双引号`"`, 并且 *ptr 不为 \0 结束符, 并且 ++len 操作后不为0
+	// 判断条件: *ptr++ 等于 `\` 则多执行一次 ptr++ 跳过转移字符 `\`, 否则直接在 if 判断中完成第一次的 ptr++ 操作, 进入下一次循环
 	while (*ptr!='\"' && *ptr && ++len) if (*ptr++ == '\\') ptr++;	/* Skip escaped quotes. */
 	
-	out=(char*)cJSON_malloc(len+1);	/* This is how long we need for the string, roughly. */
+	out=(char*)cJSON_malloc(len+1);	/* This is how long we need for the string, roughly. */  // 申请指定长度字符串的内存
 	if (!out) return 0;
 	
-	ptr=str+1;ptr2=out;
+	ptr=str+1;ptr2=out;   // ptr 表示正在解析的字符串地址, ptr2 表示要存放到的 json 元素的临时地址(out)
 	while (*ptr!='\"' && *ptr)
 	{
-		if (*ptr!='\\') *ptr2++=*ptr++;
+		if (*ptr!='\\') *ptr2++=*ptr++;  // 如果 ptr 中当前字符不是转移符号 \, 则将 ptr中的字符原样写到 ptr2 当前位置, 然后 ptr 和 ptr2 的当前指向的地址各自都+1
 		else
-		{
-			ptr++;
+		{								// 如果 ptr 中当前字符是转移符号 \, 则取转义符号的下一个字符: ptr++, 判断具体的转义字符并写入 ptr2 
+			ptr++;                      
 			switch (*ptr)
 			{
 				case 'b': *ptr2++='\b';	break;
@@ -242,8 +262,8 @@ static const char *parse_string(cJSON *item,const char *str)
 		}
 	}
 	*ptr2=0;
-	if (*ptr=='\"') ptr++;
-	item->valuestring=out;
+	if (*ptr=='\"') ptr++; // 跳过字符末尾的双引号
+	item->valuestring=out;  // 将字符串写入当前 json 元素, 注意: 如果这个一个 key, 表示当前存错了, 外面会有将 valuestring 的值转存到 string 的逻辑
 	item->type=cJSON_String;
 	return ptr;
 }
@@ -317,25 +337,30 @@ static const char *parse_object(cJSON *item,const char *value);
 static char *print_object(cJSON *item,int depth,int fmt,printbuffer *p);
 
 /* Utility to jump whitespace and cr/lf */
+// 去掉字符串开头的空白字符: 空白字符串包括 空格、制表符（TAB）、换行符（LF）等所有在 ASCII 表中小于等于 32 的字符
+// while 循环条件: in 不为空, *in 不为空(即不是字符串结束符 '\0'), *in 转换为无符号字符后值小于等于 32
 static const char *skip(const char *in) {while (in && *in && (unsigned char)*in<=32) in++; return in;}
 
 /* Parse an object - create a new root, and populate. */
+// 创建一个根元素, 然后将 根元素和 json 字符串传递给 parse_value 进行json解析, 解析完成后,将根元素的地址返回
 cJSON *cJSON_ParseWithOpts(const char *value,const char **return_parse_end,int require_null_terminated)
 {
 	const char *end=0;
-	cJSON *c=cJSON_New_Item();
+	cJSON *c=cJSON_New_Item();  // 创建一个json元素, 分配内存, 并初始化值为0
 	ep=0;
-	if (!c) return 0;       /* memory fail */
+	if (!c) return 0;       /* memory fail */  // 内存分配失败
 
 	end=parse_value(c,skip(value));
-	if (!end)	{cJSON_Delete(c);return 0;}	/* parse failure. ep is set. */
+	if (!end)	{cJSON_Delete(c);return 0;}	/* parse failure. ep is set. */  // 如果 end为0, 则表示解析失败, 需要将根元素删除
 
 	/* if we require null-terminated JSON without appended garbage, skip and then check for a null terminator */
 	if (require_null_terminated) {end=skip(end);if (*end) {cJSON_Delete(c);ep=end;return 0;}}
 	if (return_parse_end) *return_parse_end=end;
 	return c;
 }
+
 /* Default options for cJSON_Parse */
+// 将 json 格式的字符串, 解析为 json 元素链表
 cJSON *cJSON_Parse(const char *value) {return cJSON_ParseWithOpts(value,0,0);}
 
 /* Render a cJSON item/entity/structure to text. */
@@ -352,20 +377,20 @@ char *cJSON_PrintBuffered(cJSON *item,int prebuffer,int fmt)
 	return p.buffer;
 }
 
-
 /* Parser core - when encountering text, process appropriately. */
+// 解析 json 字符串为 json 元素链表的核心逻辑
 static const char *parse_value(cJSON *item,const char *value)
 {
-	if (!value)						return 0;	/* Fail on null. */
-	if (!strncmp(value,"null",4))	{ item->type=cJSON_NULL;  return value+4; }
-	if (!strncmp(value,"false",5))	{ item->type=cJSON_False; return value+5; }
-	if (!strncmp(value,"true",4))	{ item->type=cJSON_True; item->valueint=1;	return value+4; }
-	if (*value=='\"')				{ return parse_string(item,value); }
-	if (*value=='-' || (*value>='0' && *value<='9'))	{ return parse_number(item,value); }
-	if (*value=='[')				{ return parse_array(item,value); }
-	if (*value=='{')				{ return parse_object(item,value); }
+	if (!value)						return 0;	/* Fail on null. */ // json 字符串为空, 则返回0
+	if (!strncmp(value,"null",4))	{ item->type=cJSON_NULL;  return value+4; }   // 如果 json 字符串前4个字符是 null, 则返回跳过null后的字符地址
+	if (!strncmp(value,"false",5))	{ item->type=cJSON_False; return value+5; }   // 如果 false 字符串前4个字符是 false, 则返回跳过false后的字符地址
+	if (!strncmp(value,"true",4))	{ item->type=cJSON_True; item->valueint=1;	return value+4; } // 如果 json 字符串前4个字符是 true, 则返回跳过true后的字符地址
+	if (*value=='\"')				{ return parse_string(item,value); }   // 如果字符串首字符是双引号("), 则判断为是一个字符串, 进入 string 类型解析函数
+	if (*value=='-' || (*value>='0' && *value<='9'))	{ return parse_number(item,value); } // 如果当前首字符是负号(-), 或者是一个数字(0-9), 则判断为是一个数值类型的值, 进入 number 类型解析函数
+	if (*value=='[')				{ return parse_array(item,value); }   // 当前首字符如果是[, 则判断为是一个数组, 进入 array 类型解析函数
+	if (*value=='{')				{ return parse_object(item,value); }  // 当前首字符如果是{, 则判断为是一个对象, 进入 object 类型解析函数
 
-	ep=value;return 0;	/* failure. */
+	ep=value;return 0;	/* failure. */  //如果当前字符串首字母都不符合以上字符, 则表示解析失败, 返回0
 }
 
 /* Render a value to text. */
@@ -514,22 +539,22 @@ static char *print_array(cJSON *item,int depth,int fmt,printbuffer *p)
 static const char *parse_object(cJSON *item,const char *value)
 {
 	cJSON *child;
-	if (*value!='{')	{ep=value;return 0;}	/* not an object! */
+	if (*value!='{')	{ep=value;return 0;}	/* not an object! */ // 如果不是`{`开头, 返回0
 	
-	item->type=cJSON_Object;
-	value=skip(value+1);
-	if (*value=='}') return value+1;	/* empty array. */
+	item->type=cJSON_Object;    // 指定这是一个对象类型
+	value=skip(value+1);    // 去掉`{`, 然后去掉字符串开头的空字符
+	if (*value=='}') return value+1;	/* empty array. */   // 如果 { 后紧跟着的是 }, 表示这是一个空对象, 不做任何操作, 并返回下一个字符的地址
 	
-	item->child=child=cJSON_New_Item();
-	if (!item->child) return 0;
-	value=skip(parse_string(child,skip(value)));
+	item->child=child=cJSON_New_Item();   // 创建一个 cJSON 元素, 并将地址赋值给 item 的子元素 item->child 和 child 变量
+	if (!item->child) return 0;           //  创建子元素失败, 则返回0
+	value=skip(parse_string(child,skip(value)));  // 解析字符串
 	if (!value) return 0;
 	child->string=child->valuestring;child->valuestring=0;
-	if (*value!=':') {ep=value;return 0;}	/* fail! */
-	value=skip(parse_value(child,skip(value+1)));	/* skip any spacing, get the value. */
+	if (*value!=':') {ep=value;return 0;}	/* fail! */        // 如果key名后面不是冒号, 则报错, 返回0
+	value=skip(parse_value(child,skip(value+1)));	/* skip any spacing, get the value. */  // 重新调用 parse_value 对下一个字符区域进行解析
 	if (!value) return 0;
 	
-	while (*value==',')
+	while (*value==',')    // 如果遇到逗号, 则以逗号为分割符号, 将每一项都进行解析
 	{
 		cJSON *new_item;
 		if (!(new_item=cJSON_New_Item()))	return 0; /* memory fail */
